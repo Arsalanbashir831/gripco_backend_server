@@ -7,7 +7,7 @@ from .models import (
     Departments,
     Designations,
     DailyWorkReports,
-    ApplicationLeave,
+    ApplicationLeave,Attendance
 )
 
 
@@ -118,7 +118,7 @@ class DailyWorkReportsSerializer(serializers.ModelSerializer):
 
 
 class ApplicationLeaveSerializer(serializers.ModelSerializer):
-    user = MinimalUserSerializer()
+    user = MinimalUserSerializer(read_only=True)
 
     class Meta:
         model = ApplicationLeave
@@ -130,3 +130,10 @@ class ApplicationLeaveSerializer(serializers.ModelSerializer):
             "leave_end_date",
             "leave_status",
         ]
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    user = MinimalUserSerializer(read_only=True)
+    class Meta:
+        model = Attendance
+        fields = ["id", "user__id","user__full_name", "attendance_date", "attendance_status" ,"attendance_created","attendance_updated"]

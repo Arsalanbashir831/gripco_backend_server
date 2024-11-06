@@ -22,8 +22,6 @@ class CustomUserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
-
-
 class Branches(models.Model):
     branch_name = models.CharField(max_length=100)
     branch_location = models.CharField(max_length=100)
@@ -54,7 +52,6 @@ class Designations(models.Model):
     def __str__(self):
         return self.designation_name
 
-
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=100)
@@ -72,8 +69,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
-
-
+    
 class ApplicationLeave(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -96,8 +92,6 @@ class ApplicationLeave(models.Model):
     def __str__(self):
         return self.leave_reason
 
-
-
 class DailyWorkReports(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     work_title = models.CharField(max_length=100)
@@ -107,3 +101,13 @@ class DailyWorkReports(models.Model):
 
     def __str__(self):
         return self.work_title
+    
+class Attendance(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    attendance_date = models.DateField()
+    attendance_status = models.BooleanField(default=False)
+    attendance_created = models.DateTimeField(auto_now_add=True)
+    attendance_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user.email

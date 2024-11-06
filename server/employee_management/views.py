@@ -15,10 +15,11 @@ from .serializers import (
     BranchSerializer,
     DesignationSerializer,
     ApplicationLeaveSerializer,
-    DailyWorkReportsSerializer
+    DailyWorkReportsSerializer,
+    AttendanceSerializer
 )
-from .models import CustomUser, Departments, Branches, Designations,DailyWorkReports , ApplicationLeave
-from rest_framework.exceptions import PermissionDenied
+from .models import CustomUser, Departments, Branches, Designations,DailyWorkReports , ApplicationLeave,Attendance
+from rest_framework.exceptions import PermissionDenied , ValidationError
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -54,6 +55,35 @@ class LoginView(APIView):
         error_messages = serializer.errors
         formatted_errors = {key: value[0] if isinstance(value, list) else value for key, value in error_messages.items()}
         return Response(formatted_errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class WorkerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, branch_id):
+        # Filter users by designation 'Worker' and the specific branch ID
+        workers = CustomUser.objects.filter(
+            designation__designation_name="Worker",
+            branch_id=branch_id,
+            is_staff=False
+        )
+        serializer = CustomUserSerializer(workers, many=True)
+        return Response(serializer.data)
+
+
+class ManagerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, branch_id):
+        # Filter users by designation 'Manager' and the specific branch ID
+        managers = CustomUser.objects.filter(
+            designation__designation_name="Manager",
+            branch_id=branch_id,
+            is_staff=False
+        )
+        serializer = CustomUserSerializer(managers, many=True)
+        return Response(serializer.data)
+
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -158,3 +188,40 @@ class ApplicationLeaveViewSet(viewsets.ModelViewSet):
                 )
         else:
             raise PermissionDenied("Only managers from the same branch can update the leave status.")
+
+class AttendanceViewSet(viewsets.ModelViewSet):
+    serializer_class = AttendanceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.designation.id == 1:  
+            return Attendance.objects.filter(user=user)
+        elif user.designation.id == 2:  
+            return Attendance.objects.filter(user__branch=user.branch, user__designation__id=1)
+        else:
+            return Attendance.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        attendance_date = serializer.validated_data['attendance_date']
+        if user.designation.id == 1:
+            if Attendance.objects.filter(user=user, attendance_date=attendance_date).exists():
+                raise ValidationError("Attendance for this date already exists.")
+            serializer.save(user=user)
+        
+        else:
+            raise PermissionDenied("Only workers can mark attendance.")
+
+    def update(self, request, *args, **kwargs):
+        if request.user.designation.id != 2:
+            raise PermissionDenied("Only managers can update attendance records.")
+        return super().update(request, *args, **kwargs)
+    def partial_update(self, request, *args, **kwargs):
+        if request.user.designation.id != 2:
+            raise PermissionDenied("Only managers can update attendance records.")
+        return super().partial_update(request, *args, **kwargs)
+    def destroy(self, request, *args, **kwargs):
+        if request.user.designation.id != 2:
+            raise PermissionDenied("Only managers can delete attendance records.")
+        return super().destroy(request, *args, **kwargs)
